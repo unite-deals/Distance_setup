@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Distance Measurement App</title>
+    <style>
+        #cameraContainer {
+            position: relative;
+            display: inline-block;
+        }
+
+        #video {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            border: 2px solid black;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        #generateBtn {
+            display: block;
+            margin-top: 20px;
+        }
+
+        #distanceResult {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="cameraContainer">
+        <video id="video"></video>
+        <canvas id="canvas"></canvas>
+    </div>
+    <button id="generateBtn" onclick="generateLines()">Generate</button>
+    <div id="distanceResult"></div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        const points = [];
+
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    video.srcObject = stream;
+                    video.play();
+                    requestAnimationFrame(drawFrame);
+                })
+                .catch(function(error) {
+                    console.error('Error accessing the webcam:', error);
+                });
+        }
+
+        function drawFrame() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            drawPoints();
+            requestAnimationFrame(drawFrame);
+        }
+
+        function getRelativeCoordinates(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            return { x, y };
+        }
+
+        canvas.addEventListener('click', function(event) {
+            const { x, y } = getRelativeCoordinates(event);
+            points.push({ x, y });
+            drawPoints();
+        });
+
+        function drawPoints() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            points.forEach(function(point) {
+                context.beginPath();
+                context.arc(point.x, point.y, 5, 0, 2 * Math.PI, false);
+                context.fillStyle = 'red';
+                context.fill();
+                context.lineWidth = 1;
+                context.strokeStyle = 'black';
+                context.stroke();
+            });
+        }
+
+        function calculateDistance(point1, point2) {
+            return Math.sqrt((point2.x - point1.x) ** 2 + (point2.y - point1.y) ** 2);
+        }
+
+        function calculateTotalDistance(points) {
+            let totalDistance = 0;
+            for (let i = 0; i < points.length - 1; i++) {
+                const point1 = points[i];
+                const point2 = points[i + 1];
+                const distance = calculateDistance(point1, point2);
+                totalDistance += distance;
+            }
+            return totalDistance;
+        }
+
+        function generateLines() {
+            if (points.length >= 2) {
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                for (let i = 0; i < points.length - 1; i++) {
+                    drawLine(points[i], points[i + 1]);
+                }
+                const distance = calculateTotalDistance(points);
+                document.getElementById('distanceResult').innerHTML = 'Total Distance: ' + distance.toFixed(2);
+            }
+        }
+
+        function drawLine(point1, point2) {
+            context.beginPath();
+            context.moveTo(point1.x, point1.y);
+            context.lineTo(point2.x, point2.y);
+            context.lineWidth = 2;
+            context.strokeStyle = 'green';
+            context.stroke();
+        }
+
+        startCamera();
+    </script>
+</body>
+</html>
